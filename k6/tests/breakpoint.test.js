@@ -8,6 +8,11 @@
 // No hard thresholds are set — this test is observational by design. Run it
 // and look for the step where http_req_failed or http_req_duration spikes.
 //
+// PREREQUISITE: users.csv (loaduser001–loaduser200) must be pre-seeded in the
+// target environment. Unlike the functional tests, this capacity-finding test
+// reuses pre-seeded credentials rather than registering a fresh user each
+// iteration — registration overhead would skew the capacity measurement.
+//
 // Steps: 10 → 20 → 40 → 80 → 120 → 160 → 200 VUs (2 min each).
 // Adjust MAX_VUS with --env MAX_VUS=300 if the system has not broken by 200.
 import http from 'k6/http';

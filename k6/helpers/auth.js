@@ -4,6 +4,19 @@ import { AUTH_URL } from '../config/env.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json', Accept: 'application/json' };
 
+// Registers a new user. Returns true on 201, false otherwise.
+// The auth service auto-creates a session on register — call logout() before
+// an explicit login if you need a clean session (e.g. in auth lifecycle tests).
+export function register(username, password) {
+  const res = http.post(
+    `${AUTH_URL}/auth/register`,
+    JSON.stringify({ username, password }),
+    { headers: JSON_HEADERS, tags: { name: 'Register' } },
+  );
+  check(res, { 'register 201': (r) => r.status === 201 });
+  return res.status === 201;
+}
+
 // Logs in and returns the access_token JWT string.
 // k6 automatically stores the Set-Cookie response in the jar for the auth
 // domain, so subsequent calls to auth endpoints (e.g. logout, refresh) need

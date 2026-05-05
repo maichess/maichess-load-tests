@@ -1,7 +1,10 @@
 // Comparable to AnalysisSim: full analysis service lifecycle.
-// Flow: login → GET analysis config → POST /games/from-fen → POST /sessions
+// Flow: register → login → GET analysis config → POST /games/from-fen → POST /sessions
 //       → navigate → whatif move → revert whatif → start analysis → pause
 //       → stop analysis → delete session → delete game → logout.
+//
+// Generates a unique username per VU per iteration so register never 409s,
+// mirroring the always-fresh-user strategy in AnalysisSim.
 //
 // The whatif and revert steps go beyond AnalysisSim — they exercise endpoints
 // that Gatling does not cover and are included here as the k6 suite's
@@ -9,13 +12,9 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { SharedArray } from 'k6/data';
-import { login, logout, bearerAuthHeaders } from '../helpers/auth.js';
+import { register, login, logout, bearerAuthHeaders } from '../helpers/auth.js';
 import { parseCsv } from '../helpers/csv.js';
 import { ANALYSIS_URL } from '../config/env.js';
-
-const users = new SharedArray('users', function () {
-  return parseCsv(open('../../src/test/resources/feeders/users.csv'));
-});
 
 const fens = new SharedArray('fens', function () {
   return parseCsv(open('../../src/test/resources/feeders/fens.csv'));
@@ -37,10 +36,18 @@ export const options = {
 };
 
 export default function () {
-  const user = users[(__VU - 1) % users.length];
+  // Pattern mirrors AnalysisSim: "an<vuId><epochSeconds mod 1e6>"
+  const username = `an${__VU}${Math.floor(Date.now() / 1000) % 1000000}`;
+  const password = 'TestPass123!';
   const fen = fens[__ITER % fens.length];
-  const token = login(user.username, user.password);
-  if (!token) return;
+
+  if (!register(username, password)) return;
+
+  const token = login(username, password);
+  if (!token) {
+    logout();
+    return;
+  }
 
   const headers = bearerAuthHeaders(token);
 

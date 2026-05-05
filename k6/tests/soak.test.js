@@ -6,6 +6,10 @@
 // iteration — if the analysis service leaks sessions, throughput will
 // degrade visibly in the k6 output over the soak window.
 //
+// PREREQUISITE: users.csv (loaduser001–loaduser200) must be pre-seeded in the
+// target environment. Unlike the functional tests, this long-running test reuses
+// pre-seeded credentials rather than registering a fresh user each iteration.
+//
 // Default duration: 30 minutes. Override with: --env SOAK_DURATION=10m
 // Thresholds use p95 (not max) because isolated latency spikes are
 // expected and should not mask a clean soak run.
