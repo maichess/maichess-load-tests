@@ -9,18 +9,26 @@ class AnalysisSim extends Simulation:
 
   val httpProtocol = ServiceConfig.baseProtocol
 
-  val userFeeder = csv("feeders/users.csv").circular
-  val fenFeeder  = csv("feeders/fens.csv").circular
+  val fenFeeder = csv("feeders/fens.csv").circular
 
   val analysisScenario = scenario("Analysis — import FEN game, create and control session")
-    .feed(userFeeder)
+    .exec(session =>
+      val username = s"an${session.userId}${System.currentTimeMillis() / 1000 % 1000000}"
+      session.setAll("regUsername" -> username, "regPassword" -> "TestPass123!")
+    )
+    .exec(
+      http("Register")
+        .post(s"${ServiceConfig.authUrl}/auth/register")
+        .body(StringBody("""{"username":"#{regUsername}","password":"#{regPassword}"}"""))
+        .check(status.is(201))
+    )
     .exec(
       http("Login")
         .post(s"${ServiceConfig.authUrl}/auth/login")
-        .body(StringBody("""{"username":"#{username}","password":"#{password}"}"""))
+        .body(StringBody("""{"username":"#{regUsername}","password":"#{regPassword}"}"""))
         .check(status.is(200))
     )
-    .exec(getCookieValue(CookieKey("access_token").saveAs("accessToken")))
+    .exec(getCookieValue(CookieKey("access_token").withDomain(ServiceConfig.cookieDomain).saveAs("accessToken")))
     .exec(
       http("Get analysis config")
         .get(s"${ServiceConfig.analysisUrl}/analysis/config")

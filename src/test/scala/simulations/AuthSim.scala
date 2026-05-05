@@ -9,15 +9,17 @@ class AuthSim extends Simulation:
 
   val httpProtocol = ServiceConfig.baseProtocol.baseUrl(ServiceConfig.authUrl)
 
-  // Each VU registers once — use queue so no two VUs share a username.
-  val feeder = csv("feeders/users.csv").queue
-
+  // Generate a unique username per VU per run so register never 409s on reruns.
+  // Pattern: "ar<userId><epochSeconds mod 1e6>" — stays within the 3–32 char limit.
   val authScenario = scenario("Auth full lifecycle")
-    .feed(feeder)
+    .exec(session =>
+      val username = s"ar${session.userId}${System.currentTimeMillis() / 1000 % 1000000}"
+      session.setAll("regUsername" -> username, "regPassword" -> "TestPass123!")
+    )
     .exec(
       http("Register")
         .post("/auth/register")
-        .body(StringBody("""{"username":"#{username}","password":"#{password}"}"""))
+        .body(StringBody("""{"username":"#{regUsername}","password":"#{regPassword}"}"""))
         .check(status.is(201))
         .check(jsonPath("$.user_id").saveAs("userId"))
     )
@@ -29,10 +31,10 @@ class AuthSim extends Simulation:
     .exec(
       http("Login")
         .post("/auth/login")
-        .body(StringBody("""{"username":"#{username}","password":"#{password}"}"""))
+        .body(StringBody("""{"username":"#{regUsername}","password":"#{regPassword}"}"""))
         .check(status.is(200))
     )
-    .exec(getCookieValue(CookieKey("access_token").saveAs("accessToken")))
+    .exec(getCookieValue(CookieKey("access_token").withDomain(ServiceConfig.cookieDomain).saveAs("accessToken")))
     .pause(1.second, 3.seconds)
     .exec(
       http("Refresh token")

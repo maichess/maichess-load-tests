@@ -7,33 +7,35 @@ import scala.concurrent.duration.*
 
 class UserSim extends Simulation:
 
-  // No single base URL — requests target different services. Use an empty base
-  // and provide absolute URLs on each request.
   val httpProtocol = ServiceConfig.baseProtocol
 
-  // Users are pre-existing (registered via AuthSim or seeded). Use circular so
-  // VUs can re-use credentials across repeated runs.
-  val feeder = csv("feeders/users.csv").circular
-
   val userScenario = scenario("User profile read and update")
-    .feed(feeder)
+    .exec(session =>
+      val username = s"us${session.userId}${System.currentTimeMillis() / 1000 % 1000000}"
+      session.setAll("regUsername" -> username, "regPassword" -> "TestPass123!")
+    )
+    .exec(
+      http("Register")
+        .post(s"${ServiceConfig.authUrl}/auth/register")
+        .body(StringBody("""{"username":"#{regUsername}","password":"#{regPassword}"}"""))
+        .check(status.is(201))
+    )
     .exec(
       http("Login")
         .post(s"${ServiceConfig.authUrl}/auth/login")
-        .body(StringBody("""{"username":"#{username}","password":"#{password}"}"""))
+        .body(StringBody("""{"username":"#{regUsername}","password":"#{regPassword}"}"""))
         .check(status.is(200))
     )
-    .exec(getCookieValue(CookieKey("access_token").saveAs("accessToken")))
+    .exec(getCookieValue(CookieKey("access_token").withDomain(ServiceConfig.cookieDomain).saveAs("accessToken")))
     .exec(
       http("Get own profile")
         .get(s"${ServiceConfig.userUrl}/users/me")
-        // User service authenticates via access_token cookie.
         .header("Cookie", "access_token=#{accessToken}")
         .check(status.is(200))
         .check(jsonPath("$.username").exists)
     )
-    // Build a unique username per VU so concurrent PATCH calls don't collide.
-    .exec(session => session.set("newUsername", s"upd${session.userId}"))
+    // Unique temporary username — appends userId+timestamp to avoid concurrent collisions.
+    .exec(session => session.set("newUsername", s"upd${session.userId}t${System.currentTimeMillis() / 1000 % 100000}"))
     .exec(
       http("Update username")
         .patch(s"${ServiceConfig.userUrl}/users/me")
