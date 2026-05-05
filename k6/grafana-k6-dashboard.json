@@ -196,19 +196,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(k6_http_req_duration_seconds_bucket{testid=\"$testid\"}[1m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(k6_http_req_duration_seconds{testid=\"$testid\"}[1m])))",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(k6_http_req_duration_seconds_bucket{testid=\"$testid\"}[1m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(k6_http_req_duration_seconds{testid=\"$testid\"}[1m])))",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(k6_http_req_duration_seconds_bucket{testid=\"$testid\"}[1m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(k6_http_req_duration_seconds{testid=\"$testid\"}[1m])))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -361,7 +361,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(k6_iteration_duration_seconds_bucket{testid=\"$testid\"}[1m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(k6_iteration_duration_seconds{testid=\"$testid\"}[1m])))",
           "legendFormat": "p95 iteration",
           "refId": "A"
         }
