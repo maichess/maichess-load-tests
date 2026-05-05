@@ -4,10 +4,10 @@ services:
     command: >
       run
       --out experimental-prometheus-rw
+      --tag testid=${K6_TESTID:-load-test}
       /load-tests/k6/${K6_TEST_FILE:-tests/auth.test.js}
     environment:
       K6_PROMETHEUS_RW_SERVER_URL: ${PROMETHEUS_RW_URL}
-      K6_PROMETHEUS_RW_TESTID_METRICS_LABEL: ${K6_TESTID:-load-test}
       K6_PROMETHEUS_RW_PUSH_INTERVAL: 5s
       K6_VUS: ${K6_VUS:-}
       K6_DURATION: ${K6_DURATION:-}
