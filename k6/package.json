@@ -1,0 +1,22 @@
+{
+  "private": true,
+  "scripts": {
+    "test:auth":         "k6 run tests/auth.test.js",
+    "test:user":         "k6 run tests/user.test.js",
+    "test:match-maker":  "k6 run tests/match-maker.test.js",
+    "test:match-flow":   "k6 run tests/match-flow.test.js",
+    "test:analysis":     "k6 run tests/analysis.test.js",
+    "test:spike":        "k6 run tests/spike.test.js",
+    "test:soak":         "k6 run tests/soak.test.js",
+    "test:breakpoint":   "k6 run tests/breakpoint.test.js",
+
+    "test:local:auth":        "k6 run --env AUTH_URL=http://localhost:3000 tests/auth.test.js",
+    "test:local:user":        "k6 run --env AUTH_URL=http://localhost:3000 --env USER_URL=http://localhost:8080 tests/user.test.js",
+    "test:local:match-maker": "k6 run --env AUTH_URL=http://localhost:3000 --env MATCHMAKER_URL=http://localhost:8082 tests/match-maker.test.js",
+    "test:local:match-flow":  "k6 run --env AUTH_URL=http://localhost:3000 --env MATCHMANAGER_URL=http://localhost:8083 tests/match-flow.test.js",
+    "test:local:analysis":    "k6 run --env AUTH_URL=http://localhost:3000 --env ANALYSIS_URL=http://localhost:8084 tests/analysis.test.js",
+    "test:local:spike":       "k6 run --env AUTH_URL=http://localhost:3000 --env MATCHMAKER_URL=http://localhost:8082 tests/spike.test.js",
+    "test:local:soak":        "k6 run --env AUTH_URL=http://localhost:3000 --env USER_URL=http://localhost:8080 --env ANALYSIS_URL=http://localhost:8084 tests/soak.test.js",
+    "test:local:breakpoint":  "k6 run --env AUTH_URL=http://localhost:3000 --env USER_URL=http://localhost:8080 --env MATCHMAKER_URL=http://localhost:8082 tests/breakpoint.test.js"
+  }
+}
