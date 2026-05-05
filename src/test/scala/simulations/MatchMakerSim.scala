@@ -1,6 +1,6 @@
 package simulations
 
-import config.ServiceConfig
+import config.{ServiceConfig, TestProfile}
 import io.gatling.core.Predef.*
 import io.gatling.http.Predef.*
 import scala.concurrent.duration.*
@@ -59,11 +59,10 @@ class MatchMakerSim extends Simulation:
         .check(status.is(204))
     )
 
+  private val p = TestProfile.profile(baseUsers = 40, maxRespMs = 3000)
+  private val assertions = p.assertions :+ details("Enter queue").responseTime.percentile(99).lt(1500)
+
   setUp(
-    matchMakerScenario.inject(rampUsers(40).during(60.seconds))
+    matchMakerScenario.inject(p.injectionSteps)
   ).protocols(httpProtocol)
-   .assertions(
-     global.responseTime.max.lt(3000),
-     global.successfulRequests.percent.gte(99),
-     details("Enter queue").responseTime.percentile(99).lt(1500)
-   )
+   .assertions(assertions)

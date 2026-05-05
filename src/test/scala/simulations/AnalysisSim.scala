@@ -1,6 +1,6 @@
 package simulations
 
-import config.ServiceConfig
+import config.{ServiceConfig, TestProfile}
 import io.gatling.core.Predef.*
 import io.gatling.http.Predef.*
 import scala.concurrent.duration.*
@@ -103,10 +103,9 @@ class AnalysisSim extends Simulation:
         .check(status.is(204))
     )
 
+  private val p = TestProfile.profile(baseUsers = 30, maxRespMs = 5000)
+
   setUp(
-    analysisScenario.inject(rampUsers(30).during(90.seconds))
+    analysisScenario.inject(p.injectionSteps)
   ).protocols(httpProtocol)
-   .assertions(
-     global.responseTime.max.lt(5000),
-     global.successfulRequests.percent.gte(99)
-   )
+   .assertions(p.assertions)

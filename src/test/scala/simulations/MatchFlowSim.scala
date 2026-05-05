@@ -1,6 +1,6 @@
 package simulations
 
-import config.ServiceConfig
+import config.{ServiceConfig, TestProfile}
 import io.gatling.core.Predef.*
 import io.gatling.http.Predef.*
 import scala.concurrent.duration.*
@@ -68,10 +68,9 @@ class MatchFlowSim extends Simulation:
         .check(status.is(204))
     )
 
+  private val p = TestProfile.profile(baseUsers = 10, maxRespMs = 5000, minSuccessPct = 95.0)
+
   setUp(
-    matchFlowScenario.inject(rampUsers(10).during(30.seconds))
+    matchFlowScenario.inject(p.injectionSteps)
   ).protocols(httpProtocol)
-   .assertions(
-     global.responseTime.max.lt(5000),
-     global.successfulRequests.percent.gte(95)
-   )
+   .assertions(p.assertions)
