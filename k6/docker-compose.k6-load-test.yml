@@ -4,7 +4,7 @@ services:
     command: >
       run
       --out experimental-prometheus-rw
-      /scripts/${K6_TEST_FILE:-tests/auth.test.js}
+      /load-tests/k6/${K6_TEST_FILE:-tests/auth.test.js}
     environment:
       K6_PROMETHEUS_RW_SERVER_URL: ${PROMETHEUS_RW_URL}
       K6_PROMETHEUS_RW_TESTID_METRICS_LABEL: ${K6_TESTID:-load-test}
@@ -17,5 +17,5 @@ services:
       MATCHMANAGER_URL: ${MATCHMANAGER_URL:-https://matchmanager.staging.maichess.berger-software.com}
       ANALYSIS_URL: ${ANALYSIS_URL:-https://analysis.staging.maichess.berger-software.com}
     volumes:
-      - ./:/scripts:ro
+      - ../:/load-tests:ro
     restart: "no"
