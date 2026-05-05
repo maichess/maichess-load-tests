@@ -1,17 +1,12 @@
 // Comparable to UserSim: cross-service read and update of the user profile.
-// Flow: login (auth) → GET /users/me → PATCH /users/me → logout (auth).
-// Uses circular selection over the pre-seeded users so multiple VUs can share
-// credentials, matching UserSim's circular feeder strategy.
+// Flow: register → login → GET /users/me → PATCH /users/me → logout.
+// Generates a unique username per VU per iteration so register never 409s and
+// the PATCH never collides with an existing name — mirrors the dynamic
+// username strategy in UserSim exactly.
 import http from 'k6/http';
 import { check } from 'k6';
-import { SharedArray } from 'k6/data';
-import { login, logout, cookieAuthHeaders } from '../helpers/auth.js';
-import { parseCsv } from '../helpers/csv.js';
+import { register, login, logout, cookieAuthHeaders } from '../helpers/auth.js';
 import { USER_URL } from '../config/env.js';
-
-const users = new SharedArray('users', function () {
-  return parseCsv(open('../../src/test/resources/feeders/users.csv'));
-});
 
 export const options = {
   scenarios: {
@@ -29,9 +24,17 @@ export const options = {
 };
 
 export default function () {
-  const user = users[(__VU - 1) % users.length];
-  const token = login(user.username, user.password);
-  if (!token) return;
+  // Pattern mirrors UserSim: "us<vuId><epochSeconds mod 1e6>"
+  const username = `us${__VU}${Math.floor(Date.now() / 1000) % 1000000}`;
+  const password = 'TestPass123!';
+
+  if (!register(username, password)) return;
+
+  const token = login(username, password);
+  if (!token) {
+    logout();
+    return;
+  }
 
   const headers = cookieAuthHeaders(token);
 
@@ -50,9 +53,9 @@ export default function () {
     },
   });
 
-  // Patch with a deterministic username so repeated runs produce the same
-  // value rather than accumulating ever-growing names.
-  const newUsername = `upd${user.username}`;
+  // Unique temporary username — mirrors UserSim's "upd<userId>t<epochSec mod 1e5>"
+  // pattern so concurrent VUs and repeated runs never collide.
+  const newUsername = `upd${__VU}t${Math.floor(Date.now() / 1000) % 100000}`;
   const patchRes = http.patch(
     `${USER_URL}/users/me`,
     JSON.stringify({ username: newUsername }),

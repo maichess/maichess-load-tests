@@ -1,18 +1,14 @@
 // Comparable to MatchMakerSim: matchmaking queue enter and leave.
-// Flow: login → GET /bots → POST /queue (bot match) → DELETE /queue → logout.
+// Flow: register → login → GET /bots → POST /queue (bot match) → DELETE /queue → logout.
+// Generates a unique username per VU per iteration so register never 409s,
+// mirroring the always-fresh-user strategy in MatchMakerSim.
 // Includes a per-request p99 threshold on queue entry, mirroring the
 // details("Enter queue").responseTime.percentile(99) < 1500 assertion in
 // MatchMakerSim — the most precise assertion in the Gatling suite.
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { SharedArray } from 'k6/data';
-import { login, logout, bearerAuthHeaders } from '../helpers/auth.js';
-import { parseCsv } from '../helpers/csv.js';
+import { register, login, logout, bearerAuthHeaders } from '../helpers/auth.js';
 import { MATCHMAKER_URL } from '../config/env.js';
-
-const users = new SharedArray('users', function () {
-  return parseCsv(open('../../src/test/resources/feeders/users.csv'));
-});
 
 export const options = {
   scenarios: {
@@ -32,9 +28,17 @@ export const options = {
 };
 
 export default function () {
-  const user = users[(__VU - 1) % users.length];
-  const token = login(user.username, user.password);
-  if (!token) return;
+  // Pattern mirrors MatchMakerSim: "mm<vuId><epochSeconds mod 1e6>"
+  const username = `mm${__VU}${Math.floor(Date.now() / 1000) % 1000000}`;
+  const password = 'TestPass123!';
+
+  if (!register(username, password)) return;
+
+  const token = login(username, password);
+  if (!token) {
+    logout();
+    return;
+  }
 
   const headers = bearerAuthHeaders(token);
 

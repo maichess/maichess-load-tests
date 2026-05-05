@@ -3,19 +3,16 @@
 // failures. Exercises auth + match-maker since they are the entry point for
 // every active user session.
 //
+// Generates a unique username per VU per iteration so register never 409s —
+// consistent with the always-fresh-user pattern used by the functional tests.
+//
 // Pattern: 0 → 100 VUs in 10 s (spike), hold 30 s, drain in 10 s.
 // Thresholds are deliberately more lenient than the ramp-based tests because
 // a spike is expected to cause temporary latency degradation.
 import http from 'k6/http';
 import { check } from 'k6';
-import { SharedArray } from 'k6/data';
-import { login, logout, bearerAuthHeaders } from '../helpers/auth.js';
-import { parseCsv } from '../helpers/csv.js';
+import { register, login, logout, bearerAuthHeaders } from '../helpers/auth.js';
 import { MATCHMAKER_URL } from '../config/env.js';
-
-const users = new SharedArray('users', function () {
-  return parseCsv(open('../../src/test/resources/feeders/users.csv'));
-});
 
 export const options = {
   scenarios: {
@@ -37,9 +34,17 @@ export const options = {
 };
 
 export default function () {
-  const user = users[(__VU - 1) % users.length];
-  const token = login(user.username, user.password);
-  if (!token) return;
+  // Pattern: "sp<vuId><epochSeconds mod 1e6>"
+  const username = `sp${__VU}${Math.floor(Date.now() / 1000) % 1000000}`;
+  const password = 'TestPass123!';
+
+  if (!register(username, password)) return;
+
+  const token = login(username, password);
+  if (!token) {
+    logout();
+    return;
+  }
 
   const headers = bearerAuthHeaders(token);
 
@@ -49,9 +54,7 @@ export default function () {
     JSON.stringify({ time_control: 'bullet', opponent: { type: 'bot', bot_id: 'bullet' } }),
     { headers, tags: { name: 'Enter queue (spike)' } },
   );
-  check(queueRes, {
-    'enter queue 201 or 409': (r) => r.status === 201 || r.status === 409,
-  });
+  check(queueRes, { 'enter queue 201 or 409': (r) => r.status === 201 || r.status === 409 });
 
   let queueToken = null;
   try {

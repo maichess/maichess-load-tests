@@ -8,7 +8,9 @@ services:
       /load-tests/k6/${K6_TEST_FILE:-tests/auth.test.js}
     environment:
       K6_PROMETHEUS_RW_SERVER_URL: ${PROMETHEUS_RW_URL}
-      K6_PROMETHEUS_RW_PUSH_INTERVAL: 5s
+      K6_PROMETHEUS_RW_PUSH_INTERVAL: 1s
+      K6_PROMETHEUS_RW_STALE_MARKERS: "true"
+      K6_PROMETHEUS_RW_TREND_STATS: p(50),p(95),p(99)
       K6_VUS: ${K6_VUS:-}
       K6_DURATION: ${K6_DURATION:-}
       AUTH_URL: ${AUTH_URL:-https://auth.staging.maichess.berger-software.com}
