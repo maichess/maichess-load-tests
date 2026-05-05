@@ -9,17 +9,24 @@ class MatchMakerSim extends Simulation:
 
   val httpProtocol = ServiceConfig.baseProtocol
 
-  val feeder = csv("feeders/users.csv").circular
-
   val matchMakerScenario = scenario("Matchmaking queue enter and leave")
-    .feed(feeder)
+    .exec(session =>
+      val username = s"mm${session.userId}${System.currentTimeMillis() / 1000 % 1000000}"
+      session.setAll("regUsername" -> username, "regPassword" -> "TestPass123!")
+    )
+    .exec(
+      http("Register")
+        .post(s"${ServiceConfig.authUrl}/auth/register")
+        .body(StringBody("""{"username":"#{regUsername}","password":"#{regPassword}"}"""))
+        .check(status.is(201))
+    )
     .exec(
       http("Login")
         .post(s"${ServiceConfig.authUrl}/auth/login")
-        .body(StringBody("""{"username":"#{username}","password":"#{password}"}"""))
+        .body(StringBody("""{"username":"#{regUsername}","password":"#{regPassword}"}"""))
         .check(status.is(200))
     )
-    .exec(getCookieValue(CookieKey("access_token").saveAs("accessToken")))
+    .exec(getCookieValue(CookieKey("access_token").withDomain(ServiceConfig.cookieDomain).saveAs("accessToken")))
     .exec(
       http("List bots")
         .get(s"${ServiceConfig.matchMakerUrl}/bots")

@@ -30,7 +30,7 @@ class MatchFlowSim extends Simulation:
         .body(StringBody("""{"username":"#{username}","password":"#{password}"}"""))
         .check(status.is(200))
     )
-    .exec(getCookieValue(CookieKey("access_token").saveAs("accessToken")))
+    .exec(getCookieValue(CookieKey("access_token").withDomain(ServiceConfig.cookieDomain).saveAs("accessToken")))
     .exec(
       http("Get match state")
         .get(s"${ServiceConfig.matchManagerUrl}/matches/#{match_id}")
