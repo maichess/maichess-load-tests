@@ -1,0 +1,101 @@
+name: Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_file:
+        description: Test script to run
+        required: true
+        default: auth
+        type: choice
+        options:
+          - auth
+          - user
+          - match-maker
+          - match-flow
+          - analysis
+          - spike
+          - soak
+          - breakpoint
+      vus:
+        description: Virtual users (overrides test defaults where applicable)
+        required: false
+        default: '50'
+        type: string
+      duration:
+        description: Duration override, e.g. 60s, 5m (applies where test respects K6_DURATION)
+        required: false
+        default: '60s'
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    name: k6 ${{ inputs.test_file }} @ ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve environment URLs
+        id: urls
+        env:
+          PROM_USER: ${{ secrets.PROMETHEUS_RW_USERNAME }}
+          PROM_PASS: ${{ secrets.PROMETHEUS_RW_PASSWORD }}
+        run: |
+          if [ "${{ inputs.environment }}" == "staging" ]; then
+            PREFIX="staging."
+          else
+            PREFIX=""
+          fi
+          DOMAIN="maichess.berger-software.com"
+          PROM_URL="https://${PROM_USER}:${PROM_PASS}@prometheus.${PREFIX}${DOMAIN}/api/v1/write"
+          echo "::add-mask::${PROM_URL}"
+          echo "auth_url=https://auth.${PREFIX}${DOMAIN}" >> "$GITHUB_OUTPUT"
+          echo "user_url=https://users.${PREFIX}${DOMAIN}" >> "$GITHUB_OUTPUT"
+          echo "matchmaker_url=https://matchmaker.${PREFIX}${DOMAIN}" >> "$GITHUB_OUTPUT"
+          echo "matchmanager_url=https://matchmanager.${PREFIX}${DOMAIN}" >> "$GITHUB_OUTPUT"
+          echo "analysis_url=https://analysis.${PREFIX}${DOMAIN}" >> "$GITHUB_OUTPUT"
+          echo "grafana_url=https://grafana.${PREFIX}${DOMAIN}" >> "$GITHUB_OUTPUT"
+          echo "prometheus_rw_url=${PROM_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Run k6
+        working-directory: ./k6
+        env:
+          K6_TEST_FILE: tests/${{ inputs.test_file }}.test.js
+          K6_TESTID: ${{ inputs.environment }}-${{ inputs.test_file }}-${{ github.run_id }}
+          K6_VUS: ${{ inputs.vus }}
+          K6_DURATION: ${{ inputs.duration }}
+          PROMETHEUS_RW_URL: ${{ steps.urls.outputs.prometheus_rw_url }}
+          AUTH_URL: ${{ steps.urls.outputs.auth_url }}
+          USER_URL: ${{ steps.urls.outputs.user_url }}
+          MATCHMAKER_URL: ${{ steps.urls.outputs.matchmaker_url }}
+          MATCHMANAGER_URL: ${{ steps.urls.outputs.matchmanager_url }}
+          ANALYSIS_URL: ${{ steps.urls.outputs.analysis_url }}
+        run: docker compose -f docker-compose.k6-load-test.yml up --exit-code-from k6
+
+      - name: Cleanup
+        if: always()
+        working-directory: ./k6
+        run: docker compose -f docker-compose.k6-load-test.yml down --remove-orphans
+
+      - name: Summary
+        if: always()
+        run: |
+          TEST_ID="${{ inputs.environment }}-${{ inputs.test_file }}-${{ github.run_id }}"
+          GRAFANA_URL="${{ steps.urls.outputs.grafana_url }}"
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## k6 Load Test — ${{ inputs.test_file }} @ ${{ inputs.environment }}
+          | | |
+          |---|---|
+          | Test ID | \`${TEST_ID}\` |
+          | Grafana | ${GRAFANA_URL} |
+
+          Filter Grafana dashboard by **testid = \`${TEST_ID}\`** to isolate this run's metrics.
+          EOF
