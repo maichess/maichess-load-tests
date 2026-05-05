@@ -1,12 +1,21 @@
 # maichess-load-tests
 
-Gatling load tests for the maichess microservice platform, written in Scala.
+Load and performance tests for the maichess microservice platform. Two complementary frameworks are used:
+
+- **Gatling** (Scala/sbt) — scenario-based load tests with detailed HTML reports, under `src/`
+- **k6** (JavaScript) — lightweight smoke/spike/soak tests, under `k6/`
 
 ## Stack
 
+### Gatling
 - **Gatling** — load testing framework
 - **Scala 3** — test language
 - **sbt** — build tool (see `build.sbt`)
+
+### k6
+- **k6** — load testing tool (must be installed separately)
+- **JavaScript/ES modules** — test language
+- **npm scripts** — convenience wrappers (see `k6/package.json`)
 
 ## Project Layout
 
@@ -17,6 +26,12 @@ src/
     scenarios/     — reusable scenario/chain definitions
     feeders/       — data feeders (user credentials, FEN strings, etc.)
     config/        — base URLs, headers, shared config
+
+k6/
+  tests/           — k6 test scripts (one per service or test type)
+  config/          — shared k6 config (thresholds, options)
+  helpers/         — shared utility functions
+  package.json     — npm scripts for running tests locally or against staging
 ```
 
 Gatling requires simulation classes to live under `src/test/scala`.
@@ -65,16 +80,26 @@ Every simulation must define at least:
 
 ## Running Tests
 
+### Gatling
 ```bash
 sbt "Gatling/test"                          # run all simulations
 sbt "Gatling/testOnly simulations.AuthSim"  # run a single simulation
 ```
-
 Results are written to `target/gatling/`.
+
+### k6
+```bash
+# From the k6/ directory:
+npm run test:auth                   # run auth tests against configured URLs
+npm run test:local:auth             # run auth tests against localhost
+
+k6 run tests/auth.test.js           # run directly with k6
+```
+Base URLs are passed via environment variables (see `package.json` scripts). Do not hardcode them.
 
 ## What NOT to Do
 
 - Do not test gRPC services directly — drive them through the HTTP layer
-- Do not hardcode base URLs — use config objects
+- Do not hardcode base URLs — use config objects (Gatling) or environment variables (k6)
 - Do not share mutable state between virtual users
-- Do not check in `target/` output
+- Do not check in `target/` output (Gatling results) or k6 output files
