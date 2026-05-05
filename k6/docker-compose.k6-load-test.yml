@@ -3,12 +3,13 @@ services:
     image: grafana/k6:latest
     command: >
       run
-      --out prometheus-rw
+      --out experimental-prometheus-rw
       --tag testid=${K6_TESTID:-load-test}
       /load-tests/k6/${K6_TEST_FILE:-tests/auth.test.js}
     environment:
       K6_PROMETHEUS_RW_SERVER_URL: ${PROMETHEUS_RW_URL}
       K6_PROMETHEUS_RW_PUSH_INTERVAL: 1s
+      K6_PROMETHEUS_RW_STALE_MARKERS: "true"
       K6_PROMETHEUS_RW_TREND_STATS: p(50),p(95),p(99)
       K6_VUS: ${K6_VUS:-}
       K6_DURATION: ${K6_DURATION:-}
