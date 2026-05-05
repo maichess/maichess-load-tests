@@ -98,7 +98,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "k6_http_req_failed{testid=\"$testid\"} * 100",
+          "expr": "avg(k6_http_req_failed_rate{testid=\"$testid\"}) * 100",
           "legendFormat": "Error Rate",
           "refId": "A"
         }
@@ -147,7 +147,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(k6_http_reqs_total{testid=\"$testid\"}[1m])",
+          "expr": "sum(rate(k6_http_reqs_total{testid=\"$testid\"}[1m]))",
           "legendFormat": "Requests/s",
           "refId": "A"
         }
@@ -196,19 +196,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(k6_http_req_duration_seconds{testid=\"$testid\"}[1m])))",
+          "expr": "max(k6_http_req_duration_p50{testid=\"$testid\"})",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(k6_http_req_duration_seconds{testid=\"$testid\"}[1m])))",
+          "expr": "max(k6_http_req_duration_p95{testid=\"$testid\"})",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(k6_http_req_duration_seconds{testid=\"$testid\"}[1m])))",
+          "expr": "max(k6_http_req_duration_p99{testid=\"$testid\"})",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -312,7 +312,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "k6_http_req_failed{testid=\"$testid\"} * 100",
+          "expr": "avg(k6_http_req_failed_rate{testid=\"$testid\"}) * 100",
           "legendFormat": "Error Rate %",
           "refId": "A"
         }
@@ -361,8 +361,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(k6_iteration_duration_seconds{testid=\"$testid\"}[1m])))",
-          "legendFormat": "p95 iteration",
+          "expr": "k6_iteration_duration_p95{testid=\"$testid\"}",
+          "legendFormat": "p95",
           "refId": "A"
         }
       ],
