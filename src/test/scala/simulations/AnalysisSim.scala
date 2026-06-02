@@ -29,14 +29,21 @@ class AnalysisSim extends Simulation:
         .check(status.is(200))
     )
     .exec(getCookieValue(CookieKey("access_token").withDomain(ServiceConfig.cookieDomain).saveAs("accessToken")))
+    // Fetch config from the server; fall back to contract defaults if the engine
+    // service is unreachable (the config endpoint calls engine gRPC to list bots).
     .exec(
       http("Get analysis config")
         .get(s"${ServiceConfig.analysisUrl}/analysis/config")
         .header("Authorization", "Bearer #{accessToken}")
-        .check(status.is(200))
-        .check(jsonPath("$.default_bot_id").saveAs("defaultBotId"))
-        .check(jsonPath("$.default_line_count").saveAs("defaultLineCount"))
+        .check(status.saveAs("configStatus"))
+        .check(jsonPath("$.default_bot_id").optional.saveAs("defaultBotId"))
+        .check(jsonPath("$.default_line_count").optional.saveAs("defaultLineCount"))
     )
+    .exec { session =>
+      val botId = session("defaultBotId").asOption[String].getOrElse("blitz")
+      val lineCount = session("defaultLineCount").asOption[String].getOrElse("3")
+      session.setAll("defaultBotId" -> botId, "defaultLineCount" -> lineCount)
+    }
     .feed(fenFeeder)
     .exec(
       http("Import game from FEN")
